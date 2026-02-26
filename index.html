@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimyBot - Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>SimyBot</h1>
+            <p>Console di chat</p>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="message-content">
+                    <p>Ciao! Sono SimyBot. Come posso aiutarti?</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <form id="chatForm" onsubmit="sendMessage(event)">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Scrivi un messaggio..." 
+                    autocomplete="off"
+                    required
+                >
+                <button type="submit">Invia</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
