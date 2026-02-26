@@ -82,12 +82,12 @@ async function generateResponse(userMessage) {
             return `Oggi è il ${now.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
         }
         
-        // Estrai una parola chiave dalla domanda e cerca su Wikipedia
+        // Estrai una parola chiave dalla domanda e cerca su Google tramite DuckDuckGo
         const keywords = message.replace(/^(chi|cosa|come|dove|quando|quale|quanto|quali|quantf|è|che|ecco)\s+/gi, '').replace(/\?/g, '').trim();
         
         if (keywords.length > 2) {
             try {
-                const response = await searchWikipedia(keywords);
+                const response = await searchGoogle(keywords);
                 if (response) {
                     return response;
                 }
@@ -125,40 +125,32 @@ async function generateResponse(userMessage) {
     return "Interessante! Puoi dirmi di più al riguardo?";
 }
 
-async function searchWikipedia(query) {
+async function searchGoogle(query) {
     try {
-        const url = `https://it.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=true&srsearch=${encodeURIComponent(query)}&origin=*`;
+        // Usa DuckDuckGo Instant Answer API (simile a Google, gratuita, no autenticazione)
+        const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
         
         const response = await fetch(url);
         const data = await response.json();
         
-        if (data.query && data.query.search && data.query.search.length > 0) {
-            const firstResult = data.query.search[0];
-            const title = firstResult.title;
-            
-            // Fetch il contenuto completo
-            const contentUrl = `https://it.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(title)}&prop=extracts&explaintext=true&origin=*`;
-            
-            const contentResponse = await fetch(contentUrl);
-            const contentData = await contentResponse.json();
-            
-            const pages = contentData.query.pages;
-            const page = pages[Object.keys(pages)[0]];
-            
-            if (page.extract) {
-                // Estrai i primi 2-3 paragrafi
-                const text = page.extract.split('\n').filter(p => p.trim().length > 0).slice(0, 2).join(' ');
-                
-                // Limita la lunghezza
-                const summary = text.length > 300 ? text.substring(0, 300) + "..." : text;
-                
-                return `Secondo Wikipedia: ${summary}`;
+        // Se DuckDuckGo ha una risposta diretta (Abstract)
+        if (data.Abstract && data.Abstract.trim().length > 0) {
+            const answer = data.Abstract.length > 350 ? data.Abstract.substring(0, 350) + "..." : data.Abstract;
+            return answer;
+        }
+        
+        // Altrimenti cerca nei risultati
+        if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+            const firstResult = data.RelatedTopics[0];
+            if (firstResult.Text) {
+                const text = firstResult.Text.length > 300 ? firstResult.Text.substring(0, 300) + "..." : firstResult.Text;
+                return text;
             }
         }
         
         return null;
     } catch (error) {
-        console.log("Errore nella ricerca Wikipedia:", error);
+        console.log("Errore nella ricerca Google:", error);
         return null;
     }
 }
