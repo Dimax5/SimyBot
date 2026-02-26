@@ -28,13 +28,13 @@ function sendMessage(event) {
     scrollToBottom();
     
     // Simula un piccolo delay prima della risposta del bot
-    setTimeout(() => {
-        const botResponse = generateResponse(userMessage);
+    setTimeout(async () => {
+        const botResponse = await generateResponse(userMessage);
         addBotMessage(botResponse);
     }, 300);
 }
 
-function generateResponse(userMessage) {
+async function generateResponse(userMessage) {
     const message = userMessage.toLowerCase().trim();
     
     // Saluti
@@ -82,7 +82,21 @@ function generateResponse(userMessage) {
             return `Oggi è il ${now.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
         }
         
-        // Domande generiche con ?
+        // Estrai una parola chiave dalla domanda e cerca su Wikipedia
+        const keywords = message.replace(/^(chi|cosa|come|dove|quando|quale|quanto|quali|quantf|è|che|ecco)\s+/gi, '').replace(/\?/g, '').trim();
+        
+        if (keywords.length > 2) {
+            try {
+                const response = await searchWikipedia(keywords);
+                if (response) {
+                    return response;
+                }
+            } catch (error) {
+                console.log("Errore nella ricerca:", error);
+            }
+        }
+        
+        // Fallback per domande generiche con ?
         const questionResponses = [
             "Interessante domanda! Potrebbe essere così...",
             "Buona osservazione! Esattamente quello che stavo pensando!",
@@ -109,6 +123,44 @@ function generateResponse(userMessage) {
     
     // Fallback per messaggi non riconosciuti
     return "Interessante! Puoi dirmi di più al riguardo?";
+}
+
+async function searchWikipedia(query) {
+    try {
+        const url = `https://it.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=true&srsearch=${encodeURIComponent(query)}&origin=*`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.query && data.query.search && data.query.search.length > 0) {
+            const firstResult = data.query.search[0];
+            const title = firstResult.title;
+            
+            // Fetch il contenuto completo
+            const contentUrl = `https://it.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(title)}&prop=extracts&explaintext=true&origin=*`;
+            
+            const contentResponse = await fetch(contentUrl);
+            const contentData = await contentResponse.json();
+            
+            const pages = contentData.query.pages;
+            const page = pages[Object.keys(pages)[0]];
+            
+            if (page.extract) {
+                // Estrai i primi 2-3 paragrafi
+                const text = page.extract.split('\n').filter(p => p.trim().length > 0).slice(0, 2).join(' ');
+                
+                // Limita la lunghezza
+                const summary = text.length > 300 ? text.substring(0, 300) + "..." : text;
+                
+                return `Secondo Wikipedia: ${summary}`;
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.log("Errore nella ricerca Wikipedia:", error);
+        return null;
+    }
 }
 
 function addBotMessage(response) {
